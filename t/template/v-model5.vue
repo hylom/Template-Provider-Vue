@@ -1,0 +1,1 @@
+<select v-model="message"><option value="foo">foo</option><option value="message">hoge</option></select>

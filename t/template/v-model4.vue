@@ -1,0 +1,1 @@
+<input type="radio" v-model="bool_true"><input type="radio" v-model="bool_false">

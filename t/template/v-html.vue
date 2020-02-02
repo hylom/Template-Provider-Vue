@@ -1,0 +1,1 @@
+<span v-html="html_msg"></span>

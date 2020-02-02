@@ -1,0 +1,1 @@
+<span v-text="msg">hoge</span><span v-text="html_msg">foo</span>

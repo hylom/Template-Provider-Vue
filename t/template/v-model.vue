@@ -1,0 +1,1 @@
+<input v-model="model"></input>

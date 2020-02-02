@@ -1,0 +1,1 @@
+<span v-once><span>{{ msg }}</span><span v-text="msg"></span></span>
