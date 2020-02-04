@@ -178,7 +178,7 @@ sub start_cb {
 
         push @attr_result, $attr_name;
     }
-    
+
     $nest_level++;
     push @$output_que, @push_before if @push_before;
     push @$output_que, make_element($tag, $attr, \@attr_result);
@@ -203,11 +203,11 @@ sub end_cb {
         $insert_end->{$nest_level} -= 1;
     }
 }
-    
+
 sub text_cb {
     my ($text,) = @_;
     if (!pre_mode()) {
-        $text =~ s/{{\s+(.*)\s+}}/template_tag($1)/e;
+        $text =~ s/\{\{\s+(.*)\s+}}/template_tag($1)/e;
     }
     push @$output_que, $text;
 }
