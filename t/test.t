@@ -100,11 +100,5 @@ subtest "use vue template as TT2 template" => sub {
 };
 
 
-subtest "convert article template" => sub {
-  my $target = "article.html.tt2";
-  my $template = do { local( @ARGV, $/ ) = $target ; <> } ;
-  ok(parse_vue($template), "convert article template");
-};
-
 done_testing();
 
