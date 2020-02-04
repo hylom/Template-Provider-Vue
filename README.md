@@ -2,6 +2,12 @@
 
 Vue template support for Perl Template-Toolkit
 
+## Requirements
+
+  * Perl 5.10+
+  * HTML::Parser
+  * HTML::Element
+
 ## How to use
 
 sample.html.tt2:
