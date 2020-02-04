@@ -1,2 +1,2 @@
 test:
-	prove t/
+	prove -I. t/
