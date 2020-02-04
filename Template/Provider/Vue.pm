@@ -9,7 +9,7 @@ use feature ':5.10';
 use Template::Provider::Vue::Parser qw(parse_vue);
 use FileHandle;
 
-my $EXT = [qw(.vue)];
+my $EXT = ['.vue', ''];
 
 sub _find_template {
     my ($self, $fname) = @_;
