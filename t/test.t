@@ -9,6 +9,8 @@ use Template;
 use Template::Provider::Vue;
 use Template::Provider::Vue::Parser qw(parse_vue);
 
+my $_current_option = {};
+
 # utility function
 sub tt_ok {
   my ($tt, $template, $expected, $test_name) = @_;
@@ -32,16 +34,20 @@ sub tt_ok {
   if (!is($output, $expected, $test_name)) {
     my $file = $FindBin::Bin . "/template/" . $template . ".vue";
     my $template = do { local( @ARGV, $/ ) = $file ; <> } ;
-    diag "compiled template: " . parse_vue($template);
+    diag "compiled template: " . parse_vue($template, $_current_option);
   }
 }
 
 sub new_tt {
+  my ($option,) = @_;
+  $option ||= {};
+  $_current_option = $option;
+
   # create TT2 instance
   my $tt_options = { ENCODING => 'utf8',
                      INCLUDE_PATH => $FindBin::Bin . "/template",
                    };
-  my $vue_provider = Template::Provider::Vue->new($tt_options);
+  my $vue_provider = Template::Provider::Vue->new({%$tt_options, %$option});
   my $tt_provider = Template::Provider->new($tt_options);
 
   $tt_options->{LOAD_TEMPLATES} = [ $tt_provider, $vue_provider ];
@@ -74,7 +80,7 @@ subtest "use vue template as TT2 template" => sub {
  TODO: {
     local $TODO = "not implemented";
 
-  tt_ok($tt,
+    tt_ok($tt,
         'v-text2',
         '<span>message</span><span>&lt;i&gt;message&lt;/i&gt;</span>',
         "v-text directive 2");
@@ -99,6 +105,21 @@ subtest "use vue template as TT2 template" => sub {
   }
 };
 
+subtest "use vue component" => sub {
+    my $tt = new_tt({ VUE_PARSE_COMPONENT => 1,
+                      VUE_SCRIPT_DIR => "./t/test_output",
+                 });
+
+    # template tests
+    tt_ok($tt, 'component', "<template id=\"component\">\n  <div class=\"example\">message</div>\n</template>", "use vue component");
+    my $TEST_JS = "./t/test_output/component.js";
+    ok(open(my $fh, "<", $TEST_JS), "open generated js file");
+    my $script = do { local $/; <$fh> };
+    close($fh);
+    is($script, "export default {\n  data () {\n    return {\n      msg: 'Hello world!'\n    }\n  }\n}", "check generated js file");
+    ok(unlink($TEST_JS), "unlink generated js file");
+
+};
 
 done_testing();
 

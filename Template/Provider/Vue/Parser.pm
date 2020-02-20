@@ -8,6 +8,8 @@ use feature ':5.10';
 use HTML::Parser;
 use HTML::Element;
 
+use Data::Dumper;
+
 use Exporter;
 our @ISA = qw(Exporter);
 our @EXPORT_OK = qw(parse_vue);
@@ -17,9 +19,16 @@ my $nest_level = 0;
 my $level_exit = {};
 my $insert_end = {};
 my $pre_level = -1;
+my $context = "";
+my $context_level = 0;
+
+my $script_que = [];
+
+my $_option = {};
 
 sub parse_vue {
-    my ($template,) = @_;
+    my ($template, $option) = @_;
+    $_option = $option // {};
     $output_que = [];
     $nest_level = 0;
     $level_exit = {};
@@ -31,9 +40,23 @@ sub parse_vue {
                                end_h   => [\&end_cb,   "tag, text"],
                                text_h  => [\&text_cb, "text"],
                                marked_sections => 1,
-        );
+                           );
     $p->parse($template);
-    return join("", @$output_que);
+    my $html = join("", @$output_que);
+
+    # trim first/last whitespaces
+    $html =~ s/^\s*//;
+    $html =~ s/\s*$//;
+
+    if (wantarray) {
+        my $script = join("", @$script_que);
+        $script =~ s/^\s*//;
+        $script =~ s/\s*$//;
+        return ($html, $script);
+    }
+    else {
+        return $html;
+    }
 }
 
 sub template_tag {
@@ -82,7 +105,7 @@ sub remove_previous_end {
     while (@$output_que) {
         my $prev = pop @$output_que;
         last if $prev eq template_end();
-    }    
+    }
 }
 
 sub pre_mode {
@@ -98,7 +121,7 @@ sub pre_mode {
     else {
         return $pre_level >= 0 && $nest_level >= $pre_level;
     }
-} 
+}
 
 sub start_cb {
     my ($tag, $attr, $attrseq, $text) = @_;
@@ -106,6 +129,38 @@ sub start_cb {
     my @push_after;
     my @push_before;
     my @attr_result;
+
+    if ($tag eq "template") {
+        if ($context eq "template") {
+            $context_level++;
+        }
+        else {
+            $context = "template";
+            $context_level = 1;
+        }
+    }
+    elsif ($tag eq "style" && $_option->{VUE_IGNORE_ROOT_STYLE}) {
+        $context = "style";
+        $context_level = 1;
+        return;
+    }
+    elsif ($tag eq "script" && $_option->{VUE_IGNORE_ROOT_SCRIPT}) {
+        $context = "script";
+        $context_level = 1;
+        return;
+    }
+
+    if ($_option->{VUE_PARSE_COMPONENT}) {
+        return if $context ne "template";
+        if ($context eq "template"
+              && $tag eq "template"
+              && $context_level == 1
+              && !$attr->{id}) {
+            push @attr_result, "id";
+            $attr->{id} = $_option->{VUE_COMPONENT_NAME};
+        }
+    }
+
     for my $attr_name (@$attrseq) {
         if (pre_mode()) {
             push @attr_result, $attr_name;
@@ -155,7 +210,7 @@ sub start_cb {
             $insert_end->{$nest_level} = 1;
             next;
         }
-        
+
         if ($attr_name eq "v-html") {
             push @push_after, template_tag($attr->{'v-html'});
             next;
@@ -187,6 +242,23 @@ sub start_cb {
 
 sub end_cb {
     my ($tagname, $text) = @_;
+
+    if ($tagname eq "/template") {
+        if ($context_level == 1) {
+            $context = "";
+        }
+        $context_level--;
+    }
+    elsif ($tagname eq "/style" && $context eq "style") {
+        $context = "";
+        return;
+    }
+    elsif ($tagname eq "/script" && $context eq "script") {
+        $context = "";
+        # $script_que
+        return;
+    }
+
     push @$output_que, $text;
 
     $nest_level--;
@@ -206,6 +278,15 @@ sub end_cb {
 
 sub text_cb {
     my ($text,) = @_;
+
+    if ($_option->{VUE_IGNORE_ROOT_STYLE} && $context eq "style") {
+        return;
+    }
+    if ($_option->{VUE_IGNORE_ROOT_SCRIPT} && $context eq "script") {
+        push @$script_que, $text;
+        return;
+    }
+
     if (!pre_mode()) {
         $text =~ s/\{\{\s+(.*)\s+}}/template_tag($1)/e;
     }
