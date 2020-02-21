@@ -30,6 +30,7 @@ sub parse_vue {
     my ($template, $option) = @_;
     $_option = $option // {};
     $output_que = [];
+    $script_que = [];
     $nest_level = 0;
     $level_exit = {};
     $insert_end = {};
@@ -47,11 +48,13 @@ sub parse_vue {
     # trim first/last whitespaces
     $html =~ s/^\s*//;
     $html =~ s/\s*$//;
+    utf8::decode($html) if !utf8::is_utf8($html);
 
     if (wantarray) {
         my $script = join("", @$script_que);
         $script =~ s/^\s*//;
         $script =~ s/\s*$//;
+        utf8::decode($script) if !utf8::is_utf8($script);
         return ($html, $script);
     }
     else {
