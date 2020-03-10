@@ -1,0 +1,1 @@
+<span v-text="obj.key1"></span><span v-text="obj.key2"></span>

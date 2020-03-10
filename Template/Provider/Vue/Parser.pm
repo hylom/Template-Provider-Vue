@@ -7,6 +7,7 @@ use feature ':5.10';
 
 use HTML::Parser;
 use HTML::Element;
+use List::Util qw(any);
 
 use Data::Dumper;
 
@@ -29,6 +30,7 @@ my $_option = {};
 sub parse_vue {
     my ($template, $option) = @_;
     $_option = $option // {};
+
     $output_que = [];
     $script_que = [];
     $nest_level = 0;
@@ -104,6 +106,26 @@ sub make_element {
     return $a->starttag('&">');
 }
 
+sub include_component {
+    my ($tag, $attr, $attr_seq) = @_;
+    my $comp = $_option->{VUE_COMPONENTS}{$tag};
+
+    my @args;
+    for my $attr_name (@$attr_seq) {
+        my $arg_str = $attr->{$attr_name};
+        my $arg_name = $attr_name;
+
+        if ($attr_name =~ m/^(?:v-bind)?:(.*)/) {
+            $arg_name = $1;
+        }
+        else {
+            $arg_str = "\"$arg_str\""
+        }
+        push @args, "$arg_name=$arg_str";
+    }
+    return template_tag('INCLUDE ' . $comp->{path} . " " . join(" ", @args));
+}
+
 sub remove_previous_end {
     while (@$output_que) {
         my $prev = pop @$output_que;
@@ -155,13 +177,15 @@ sub start_cb {
 
     if ($_option->{VUE_PARSE_COMPONENT}) {
         return if $context ne "template";
-        if ($context eq "template"
-              && $tag eq "template"
-              && $context_level == 1
-              && !$attr->{id}) {
-            push @attr_result, "id";
-            $attr->{id} = $_option->{VUE_COMPONENT_NAME};
+        if ($tag eq "template" && $context_level == 1) {
+            return;
         }
+    }
+
+    my $component_tag = 0;
+    if ($_option->{VUE_COMPONENTS}
+        && any { $tag eq $_ } keys %{$_option->{VUE_COMPONENTS}}) {
+        $component_tag = 1;
     }
 
     for my $attr_name (@$attrseq) {
@@ -224,7 +248,7 @@ sub start_cb {
             next;
         }
 
-        if ($attr_name =~ m/^(?:v-bind)?:(.*)/) {
+        if (!$component_tag && $attr_name =~ m/^(?:v-bind)?:(.*)/) {
             $attr->{$1} = template_tag($attr->{$attr_name});
             push @attr_result, $1;
             next;
@@ -239,15 +263,24 @@ sub start_cb {
 
     $nest_level++;
     push @$output_que, @push_before if @push_before;
-    push @$output_que, make_element($tag, $attr, \@attr_result);
+
+    if ($component_tag) {
+        push @$output_que, include_component($tag, $attr, \@attr_result);
+    }
+    else {
+        push @$output_que, make_element($tag, $attr, \@attr_result);
+    }
+
     push @$output_que, @push_after if @push_after;
 }
 
 sub end_cb {
     my ($tagname, $text) = @_;
+    my $bypass = 0;
 
     if ($tagname eq "/template") {
         if ($context_level == 1) {
+            $bypass = 1;
             $context = "";
         }
         $context_level--;
@@ -262,7 +295,15 @@ sub end_cb {
         return;
     }
 
-    push @$output_que, $text;
+    if ($_option->{VUE_COMPONENTS}) {
+        my $tag = substr($tagname, 1);
+        if (any { $tag eq $_ } keys %{$_option->{VUE_COMPONENTS}}) {
+            $bypass = 1;
+        }
+    }
+    if (!$bypass) {
+        push @$output_que, $text;
+    }
 
     $nest_level--;
     if ($pre_level == $nest_level) {
@@ -273,6 +314,7 @@ sub end_cb {
         push @$output_que, $level_exit->{$nest_level};
         delete $level_exit->{$nest_level};
     }
+
     while ($insert_end->{$nest_level}) {
         push @$output_que, template_end();
         $insert_end->{$nest_level} -= 1;

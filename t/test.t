@@ -9,6 +9,7 @@ use Template;
 use Template::Provider::Vue;
 use Template::Provider::Vue::Parser qw(parse_vue);
 use Template::Provider::Vue::Stripper qw(strip);
+use Data::Dumper;
 
 my $_current_option = {};
 
@@ -23,6 +24,9 @@ sub tt_ok {
                flag_false => 0,
                num => 10,
                model => 'model_value',
+               items => [ "item1", "item2" ],
+               obj => { key1 => "value1",
+                        key2 => "value2", },
              };
   my $rs = $tt->process($template, $vars, \$output);
 
@@ -35,6 +39,7 @@ sub tt_ok {
   if (!is($output, $expected, $test_name)) {
     my $file = $FindBin::Bin . "/template/" . $template;
     my $template = do { local( @ARGV, $/ ) = $file ; <> } ;
+    #diag Dumper $_current_option;
     diag "compiled template: " . parse_vue($template, $_current_option);
   }
 }
@@ -75,6 +80,10 @@ subtest "use vue template as TT2 template" => sub {
         'v-text.vue',
         '<span>message</span><span>&lt;i&gt;message&lt;/i&gt;</span>',
         "v-text directive");
+  tt_ok($tt,
+        'object.vue',
+        '<span>value1</span><span>value2</span>',
+        "v-text directive");
   tt_ok($tt, 'v-html.vue', '<span><i>message</i></span>', "v-html directive");
   tt_ok($tt, 'v-show.vue', '<span>foo bar</span>', "v-show directive");
   tt_ok($tt, 'v-on.vue', '<span>foo bar</span><span>hoge</span>', "v-show directive");
@@ -87,6 +96,9 @@ subtest "use vue template as TT2 template" => sub {
   tt_ok($tt, 'v-once.vue',
         '<span><span>message</span><span>message</span></span>',
         "v-once directive");
+  tt_ok($tt, 'v-for.vue',
+        '<span>item1</span><span>item2</span>',
+        "v-for directive");
 
  TODO: {
     local $TODO = "not implemented";
@@ -117,13 +129,18 @@ subtest "use vue template as TT2 template" => sub {
 };
 
 subtest "use vue component" => sub {
+    my $TEST_DIR = "./t/test_output/";
     my $TEST_JS = "./t/test_output/component.js";
+    my $components = { subcomponent => { path => "subcomponent.vue" } };
     my $tt = new_tt({ VUE_PARSE_COMPONENT => 1,
                       VUE_SCRIPT_DIR => "./t/test_output",
+                      VUE_COMPONENTS => $components,
+                      VUE_IGNORE_ROOT_STYLE => 1,
+                      VUE_IGNORE_ROOT_SCRIPT =>1,
                  });
 
     # template tests
-    tt_ok($tt, 'component.vue', "<template id=\"component\">\n  <div class=\"example\">message</div>\n</template>", "use vue component");
+    tt_ok($tt, 'component.vue', "<div class=\"example\">message</div>", "use vue component");
     is(slurp($TEST_JS), "export default {\n  data () {\n    return {\n      msg: 'Hello world!'\n    }\n  }\n}", "check generated js file");
     ok(unlink($TEST_JS), "unlink generated js file");
 
@@ -132,6 +149,10 @@ subtest "use vue component" => sub {
     is(slurp($TEST_JS), "export default {\n  data () {\n    return {\n      msg: 'Hello world!'\n    }\n  }\n}", "check generated js file");
     ok(unlink($TEST_JS), "unlink generated js file");
 
+    # component test
+    tt_ok($tt, 'component2.vue',
+          '<div class="value1" id="the_text">item1</div><div class="value1" id="the_text">item2</div>',
+          "use sub component");
 };
 
 subtest "test strip" => sub {

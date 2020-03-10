@@ -27,6 +27,7 @@ sub _init {
     $self->{VUE_IGNORE_ROOT_STYLE} = $params->{VUE_IGNORE_ROOT_STYLE} // $self->{VUE_PARSE_COMPONENT};
     $self->{VUE_IGNORE_ROOT_SCRIPT} = $params->{VUE_IGNORE_ROOT_SCRIPT} // $self->{VUE_PARSE_COMPONENT};
     $self->{VUE_SCRIPT_DIR} = $params->{VUE_SCRIPT_DIR} // '';
+    $self->{VUE_COMPONENTS} = $params->{VUE_COMPONENTS} // {};
     return 1;
 }
 
@@ -121,13 +122,14 @@ sub _template_content {
         if ($self->{VUE_PARSE_COMPONENT}) {
             my ($filename, ) = fileparse($path, qr/\.[^.]*/);
             my $component_name = $filename;
-            my ($tmpl, $script) = parse_vue($vue,
-                                            { VUE_PARSE_COMPONENT => $self->{VUE_PARSE_COMPONENT},
-                                              VUE_IGNORE_ROOT_STYLE => $self->{VUE_IGNORE_ROOT_STYLE},
-                                              VUE_IGNORE_ROOT_SCRIPT => $self->{VUE_IGNORE_ROOT_SCRIPT},
-                                              VUE_COMPONENT_NAME => $component_name,
-                                          });
-            if ($self->{VUE_SCRIPT_DIR}) {
+            my $opts = { VUE_PARSE_COMPONENT => $self->{VUE_PARSE_COMPONENT},
+                         VUE_IGNORE_ROOT_STYLE => $self->{VUE_IGNORE_ROOT_STYLE},
+                         VUE_IGNORE_ROOT_SCRIPT => $self->{VUE_IGNORE_ROOT_SCRIPT},
+                         VUE_COMPONENT_NAME => $component_name,
+                         VUE_COMPONENTS => $self->{VUE_COMPONENTS},
+            };
+            my ($tmpl, $script) = parse_vue($vue, $opts);
+            if ($self->{VUE_SCRIPT_DIR} && $script) {
                 $self->_write_script($script, $component_name);
             }
 
