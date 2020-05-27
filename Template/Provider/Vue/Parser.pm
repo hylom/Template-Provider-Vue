@@ -188,6 +188,8 @@ sub start_cb {
         $component_tag = 1;
     }
 
+    my @classes;
+    my @class_directives;
     for my $attr_name (@$attrseq) {
         if (pre_mode()) {
             push @attr_result, $attr_name;
@@ -248,6 +250,30 @@ sub start_cb {
             next;
         }
 
+        if (lc($attr_name) eq "class") {
+            push @classes, $attr->{$attr_name};
+            next;
+        }
+
+        if (!$component_tag && $attr_name =~ m/^(?:v-bind)?:class/i) {
+            # v-bind:class is special case.
+            my $val = $attr->{$attr_name};
+            if ($val =~ m/\{(.*)}/) {
+                my @terms = split(/\s*,\s*/, $1);
+                for my $term (@terms) {
+                    my ($k, $v) = split(/\s*:\s*/, $term);
+                    if ($k && $v) {
+                        my $result = template_if($v) . " $k" . template_end;
+                        push @class_directives, $result;
+                    }
+                }
+            }
+            else {
+                push @classes, template_tag($val);
+            }
+            next;
+        }
+
         if (!$component_tag && $attr_name =~ m/^(?:v-bind)?:(.*)/) {
             $attr->{$1} = template_tag($attr->{$attr_name});
             push @attr_result, $1;
@@ -259,6 +285,10 @@ sub start_cb {
         }
 
         push @attr_result, $attr_name;
+    }
+    if (@classes) {
+        push @attr_result, 'class';
+        $attr->{class} = join(" ", @classes) . join("", @class_directives);
     }
 
     $nest_level++;

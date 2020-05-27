@@ -90,6 +90,7 @@ subtest "use vue template as TT2 template" => sub {
   tt_ok($tt, 'v-bind.vue',
         '<span foo="message">foo bar</span><span hoge="message">hoge</span>',
         "v-bind directive");
+  tt_ok($tt, 'v-bind3.vue', '<span class="foo some">hoge</span>', "v-bind directive 3");
   tt_ok($tt, 'v-pre.vue',
         '<span><span>{{ msg }}</span><span v-text="msg"></span></span>',
         "v-pre directive");
