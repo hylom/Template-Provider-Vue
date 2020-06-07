@@ -26,6 +26,9 @@ my $context_level = 0;
 my $script_que = [];
 
 my $_option = {};
+my $empty_elements = [qw(br hr img input meta area
+                        base col embed keygen
+                        link param source)];
 
 sub parse_vue {
     my ($template, $option) = @_;
@@ -44,6 +47,7 @@ sub parse_vue {
                                text_h  => [\&text_cb, "text"],
                                marked_sections => 1,
                            );
+    #$p->empty_element_tags(1);
     $p->parse($template);
     my $html = join("", @$output_que);
 
@@ -302,11 +306,16 @@ sub start_cb {
     }
 
     push @$output_que, @push_after if @push_after;
+
+    if (any { $tag eq $_ } @$empty_elements) {
+        # raise artifical "end" event
+        end_cb("/$tag", "", 1);
+    }
 }
 
 sub end_cb {
-    my ($tagname, $text) = @_;
-    my $bypass = 0;
+    my ($tagname, $text, $bypass) = @_;
+    $bypass ||= 0;
 
     if ($tagname eq "/template") {
         if ($context_level == 1) {

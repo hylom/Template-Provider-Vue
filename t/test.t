@@ -27,6 +27,7 @@ sub tt_ok {
                items => [ "item1", "item2" ],
                obj => { key1 => "value1",
                         key2 => "value2", },
+               url => "http://example.com/",
              };
   my $rs = $tt->process($template, $vars, \$output);
 
@@ -100,6 +101,10 @@ subtest "use vue template as TT2 template" => sub {
   tt_ok($tt, 'v-for.vue',
         '<span>item1</span><span>item2</span>',
         "v-for directive");
+  tt_ok($tt, 'tag-close.vue',
+        '<div class="foo"><img src="http://example.com/" /><span>hoge</span></div>
+<div class="foo"><span>bar</span></div>',
+        "v-for directive");
 
  TODO: {
     local $TODO = "not implemented";
@@ -120,7 +125,6 @@ subtest "use vue template as TT2 template" => sub {
           'v-model5.vue',
           '<select><option value="foo">foo</option><option value="message" selected>hoge</option></select>',
           "v-model directive 5");
-
     # TODO: v-slot
     # TODO: v-clock
     # TODO: :key attribute
