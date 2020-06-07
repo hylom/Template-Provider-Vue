@@ -28,6 +28,7 @@ sub _init {
     $self->{VUE_IGNORE_ROOT_SCRIPT} = $params->{VUE_IGNORE_ROOT_SCRIPT} // $self->{VUE_PARSE_COMPONENT};
     $self->{VUE_SCRIPT_DIR} = $params->{VUE_SCRIPT_DIR} // '';
     $self->{VUE_COMPONENTS} = $params->{VUE_COMPONENTS} // {};
+    $self->{VUE_SCRIPT_WRITE} = $params->{VUE_SCRIPT_WRITE} // 0;
     return 1;
 }
 
@@ -129,7 +130,9 @@ sub _template_content {
                          VUE_COMPONENTS => $self->{VUE_COMPONENTS},
             };
             my ($tmpl, $script) = parse_vue($vue, $opts);
-            if ($self->{VUE_SCRIPT_DIR} && $script) {
+            if ($self->{VUE_SCRIPT_WRITE}
+                  && $self->{VUE_SCRIPT_DIR}
+                  && $script) {
                 $self->_write_script($script, $component_name);
             }
 
